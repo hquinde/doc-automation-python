@@ -55,3 +55,42 @@ python scripts/report_generator.py
 
 ```
 
+## Dependencies
+
+- Python 3.8+
+- Pandas
+- OpenPyXL
+
+### Install dependencies
+
+Use the following command to install all required packages:
+
+```bash
+pip install -r requirements.txt
+
+
+```
+
+## Virtual Environment Setup
+
+This project is designed to run inside a Python **virtual environment** to avoid dependency conflicts and system-wide changes.
+
+### Setting up the virtual environment
+
+1. Create a virtual environment (only needed once):
+
+   ```bash
+   python3 -m venv venv
+
+2. Activate the virtual machine:
+
+    source venv/bin/activate
+
+3. Install required packages:
+
+    pip install -r requirements.txt
+
+## When the virtual environment is active, your terminal prompt will show (venv).
+
+
+```
