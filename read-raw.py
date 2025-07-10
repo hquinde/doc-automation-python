@@ -3,6 +3,8 @@ from openpyxl import load_workbook
 from datetime import datetime
 from openpyxl.utils import get_column_letter
 
+# activate virtual environment: .\venv\Scripts\Activate.ps1
+
 
 # read excel file
 file_path = 'Raw Data.xlsx'
