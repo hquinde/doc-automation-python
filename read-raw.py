@@ -175,14 +175,23 @@ sample_names.insert(qcb_index + 1, "Blk")
 
 ws2 = wb["QAQC"]
 
-# Define starting cell (we begin at row 3, column B)
-start_row = 3
-start_col = 2  # Column B is index 2
+# Build a map of Sample Id → Row Number in the QAQC template
+sample_row_map = {}
+for row in ws2.iter_rows(min_row=3, max_col=1):
+    sample_id = row[0].value
+    if sample_id:
+        sample_row_map[sample_id.strip()] = row[0].row
 
-# Write only the 24 element values (one row per sample)
-for i, values in enumerate(qaqc_data):
-    for j, val in enumerate(values):
-        ws2.cell(row=start_row + i, column=start_col + j, value=val)
+# Write values based on sample name match (not fixed row order)
+start_col = 2  # Column B
+for sample_name, values in zip(sample_names, qaqc_data):
+    target_row = sample_row_map.get(sample_name)
+    if target_row:
+        for j, val in enumerate(values):
+            ws2.cell(row=target_row, column=start_col + j, value=val)
+    else:
+        print(f"Sample '{sample_name}' not found in QAQC sheet — skipping.")
+
 
 # Save the updated workbook
 wb.save(output_path)
