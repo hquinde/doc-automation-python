@@ -115,7 +115,7 @@ template_path = "Template Report.xlsx"
 output_path = f"Report_Output.xlsx"  # Name of your output file
 
 wb = load_workbook(template_path)
-ws = wb["Calibration"]
+ws1 = wb["Calibration"]
 
 # Write the element data starting from cell B2
 start_row = 2
@@ -123,7 +123,7 @@ start_col = 2  # B is column 2
 
 for i, row in enumerate(element_data):  # element_data is your list of lists
     for j, value in enumerate(row):
-        ws.cell(row=start_row + i, column=start_col + j, value=value)
+        ws1.cell(row=start_row + i, column=start_col + j, value=value)
 
 
 
@@ -172,19 +172,18 @@ qaqc_data.insert(qcb_index + 1, blk_values)
 sample_names.insert(qcb_index + 1, "Blk")
 
 
-print(qaqc_data)
 
-# ws = wb["QAQC"]
+ws2 = wb["QAQC"]
 
-# # Define starting cell (we begin at row 3, column B)
-# start_row = 3
-# start_col = 2  # Column B is index 2
+# Define starting cell (we begin at row 3, column B)
+start_row = 3
+start_col = 2  # Column B is index 2
 
-# # Write only the 24 element values (one row per sample)
-# for i, values in enumerate(qaqc_data):
-#     for j, val in enumerate(values):
-#         ws.cell(row=start_row + i, column=start_col + j, value=val)
+# Write only the 24 element values (one row per sample)
+for i, values in enumerate(qaqc_data):
+    for j, val in enumerate(values):
+        ws2.cell(row=start_row + i, column=start_col + j, value=val)
 
-# # Save the updated workbook
-# wb.save(output_path)
-# print(f"Data written to {output_path}")
+# Save the updated workbook
+wb.save(output_path)
+print(f"Data written to {output_path}")
