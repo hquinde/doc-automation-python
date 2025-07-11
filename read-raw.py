@@ -5,6 +5,7 @@ from openpyxl.utils import get_column_letter
 
 # activate virtual environment: .\venv\Scripts\Activate.ps1
 # Phase1, hardcode automation, then for phase2 we automate the templates as well and figure out the equaton...
+# get updates to current device: git pull origin main
 
 
 # read excel file
