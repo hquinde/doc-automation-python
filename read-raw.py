@@ -6,8 +6,6 @@ from datetime import datetime
 # Phase1, hardcode automation, then for phase2 we automate the templates as well and figure out the equaton...
 # get updates to current device: git pull origin main
 
-#
-
 # -----------------------------
 # Reusable Writing Function
 # -----------------------------
