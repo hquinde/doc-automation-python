@@ -1,135 +1,83 @@
 import pandas as pd
 from openpyxl import load_workbook
 from datetime import datetime
-from openpyxl.utils import get_column_letter
 
-# activate virtual environment: .\venv\Scripts\Activate.ps1
-# Phase1, hardcode automation, then for phase2 we automate the templates as well and figure out the equaton...
+# -----------------------------
+# Reusable Writing Function
+# -----------------------------
+def write_sample_data_by_id(ws, sample_names, data_rows, element_columns, header_row=1, data_start_col=2):
+    """
+    Writes data to a worksheet by matching sample names in column A.
+    """
+    sample_row_map = {}
+    for row in ws.iter_rows(min_row=header_row + 1, max_col=1):
+        sample_id = row[0].value
+        if sample_id:
+            sample_row_map[sample_id.strip()] = row[0].row
+
+    for sample_name, values in zip(sample_names, data_rows):
+        target_row = sample_row_map.get(sample_name)
+        if target_row:
+            for j, val in enumerate(values):
+                ws.cell(row=target_row, column=data_start_col + j, value=val)
+        else:
+            print(f"⚠️ Sample '{sample_name}' not found in sheet — skipping.")
 
 
-# read excel file
+# -----------------------------
+# Input Setup
+# -----------------------------
 file_path = 'Raw Data.xlsx'
 sheet_name = 'Concentrations'
-
-
-
+template_path = 'Template Report.xlsx'
+output_path = 'Report_Output.xlsx'
 
 std_names = [
-    'Std1-5ppb',
-    'Std2-20ppb',
-    'Std3-50ppb',
-    'Std4-200ppb',
-    'Std5-500ppb',
-    'Std6-2000ppb'
+    'Std1-5ppb', 'Std2-20ppb', 'Std3-50ppb',
+    'Std4-200ppb', 'Std5-500ppb', 'Std6-2000ppb'
 ]
 
 element_columns = [
-    'Na 23\n(ug/L)',
-    'Mg 24\n(ug/L)',
-    'Al 27\n(ug/L)',
-    'Si 28\n(ug/L)',
-    'P 31\n(ug/L)',
-    'K 39\n(ug/L)',
-    'Ca-43 43\nHelium KED\n(ug/L)',
-    'Ca-43std 43\n(ug/L)',
-    'Ca-44 44\nHelium KED\n(ug/L)',
-    'Ca-44std 44\n(ug/L)',
-    'Mn 55\n(ug/L)',
-    'Fe 57\n(ug/L)',
-    'Co 59\n(ug/L)',
-    'Ni 60\n(ug/L)',
-    'Cu 63\n(ug/L)',
-    'Zn 68\n(ug/L)',
-    'Se 78\n(ug/L)',
-    'Se 82\n(ug/L)',
-    'Sr 88\n(ug/L)',
-    'Mo 96\n(ug/L)',
-    'Cd 113\n(ug/L)',
-    'Pb 206\n(ug/L)',
-    'Pb 207\n(ug/L)',
-    'Pb 208\n(ug/L)'
+    'Na 23\n(ug/L)', 'Mg 24\n(ug/L)', 'Al 27\n(ug/L)', 'Si 28\n(ug/L)',
+    'P 31\n(ug/L)', 'K 39\n(ug/L)', 'Ca-43 43\nHelium KED\n(ug/L)',
+    'Ca-43std 43\n(ug/L)', 'Ca-44 44\nHelium KED\n(ug/L)', 'Ca-44std 44\n(ug/L)',
+    'Mn 55\n(ug/L)', 'Fe 57\n(ug/L)', 'Co 59\n(ug/L)', 'Ni 60\n(ug/L)',
+    'Cu 63\n(ug/L)', 'Zn 68\n(ug/L)', 'Se 78\n(ug/L)', 'Se 82\n(ug/L)',
+    'Sr 88\n(ug/L)', 'Mo 96\n(ug/L)', 'Cd 113\n(ug/L)',
+    'Pb 206\n(ug/L)', 'Pb 207\n(ug/L)', 'Pb 208\n(ug/L)'
 ]
 
-# template name : raw name
 sample_map = {
-    "QCS" : "QCS 200PPB 1%NO3",
-    "Ca Chk 500 ppb" : "Ca check 500% NO3",
-    "MDL" : "MDL",
-    "CCV1 200 ppb" : "CCV1 200 ppb",
-    "CCV2" : "CCV2",
-    "CCV3" : "CCV3",
-    "CCV4" : "CCV4",
-    "CCV5" : "CCV5",
-    "CCV6" : "CCV6",
-    "CCV7" : "CCV7",
-    "CCV8" : "CCV8",
-    "CCV9" : "CCV9",
-    "CCV10" : "CCV10",
-    "CCV11" : "CCV11",
-
-    "QCB" : "QCB",
-#Blk will have unique code to find the data, since it requires getting the "Rinse" after QCB
-    "CCB1" : "CCB1",
-    "CCB2" : "CCB2",
-    "CCB3" : "CCB3",
-    "CCB4" : "CCB4",
-    "CCB5" : "CCB5",
-    "CCB6" : "CCB6",
-    "CCB7" : "CCB7",
-    "CCB8" : "CCB8",
-    "CCB9" : "CCB9",
-    "CCB10" : "CCB10",
-    "CCB11" : "CCB11",
-
-    "LCB1" : "LCB1",
-    "LCB2" : "LCB2",
-    "LCB3" : "LCB3",
-    "LCB4" : "LCB4",
-    "LCB5" : "LCB5"
+    "QCS": "QCS 200PPB 1%NO3",
+    "Ca Chk 500 ppb": "Ca check 500% NO3",
+    "MDL": "MDL",
+    "CCV1 200 ppb": "CCV1 200 ppb",
+    "CCV2": "CCV2", "CCV3": "CCV3", "CCV4": "CCV4", "CCV5": "CCV5",
+    "CCV6": "CCV6", "CCV7": "CCV7", "CCV8": "CCV8", "CCV9": "CCV9",
+    "CCV10": "CCV10", "CCV11": "CCV11",
+    "QCB": "QCB",
+    "CCB1": "CCB1", "CCB2": "CCB2", "CCB3": "CCB3", "CCB4": "CCB4", "CCB5": "CCB5",
+    "CCB6": "CCB6", "CCB7": "CCB7", "CCB8": "CCB8", "CCB9": "CCB9", "CCB10": "CCB10", "CCB11": "CCB11",
+    "LCB1": "LCB1", "LCB2": "LCB2", "LCB3": "LCB3", "LCB4": "LCB4", "LCB5": "LCB5"
 }
 
 
-
-
-
-
-
-
-
-#--------------------------------------------------------------------------------------------------
-# Calibration
-#--------------------------------------------------------------------------------------------------
-
+# -----------------------------
+# Read Data
+# -----------------------------
 df = pd.read_excel(file_path, sheet_name=sheet_name)
 
+# -----------------------------
+# CALIBRATION DATA
+# -----------------------------
 filtered_df = df[df["Sample Id"].isin(std_names)]
-
 calibration_df = filtered_df.drop_duplicates(subset="Sample Id", keep="first")
-
-element_data = calibration_df[element_columns].values.tolist()  # this is a list of lists
-
+element_data = calibration_df[element_columns].values.tolist()
 
 
-# Load the template workbook and the "Calibration" sheet
-template_path = "Template Report.xlsx"
-output_path = f"Report_Output.xlsx"  # Name of your output file
-
-wb = load_workbook(template_path)
-ws1 = wb["Calibration"]
-
-# Write the element data starting from cell B2
-start_row = 2
-start_col = 2  # B is column 2
-
-for i, row in enumerate(element_data):  # element_data is your list of lists
-    for j, value in enumerate(row):
-        ws1.cell(row=start_row + i, column=start_col + j, value=value)
-
-
-
-#--------------------------------------------------------------------------------------------------
-
-# Find first "Rinse" row after "QCB"
+# -----------------------------
+# QAQC: Find BLK (Rinse after QCB)
+# -----------------------------
 sample_ids = df["Sample Id"].tolist()
 blk_row = None
 
@@ -141,16 +89,13 @@ for i, sid in enumerate(sample_ids):
                 break
         break
 
-# Extract the 24 element columns for blk
 blk_values = blk_row[element_columns].tolist() if blk_row is not None else [None] * len(element_columns)
 
-
-
-
-# Extracted data for the sample_map
-qaqc_data = []  # List to hold all extracted rows in order
-sample_names = list(sample_map.keys())  # Ordered keys from sample_map
-
+# -----------------------------
+# QAQC: Extract Values
+# -----------------------------
+qaqc_data = []
+sample_names = list(sample_map.keys())
 
 for template_name, raw_sample_name in sample_map.items():
     match = df[df["Sample Id"] == raw_sample_name]
@@ -158,41 +103,26 @@ for template_name, raw_sample_name in sample_map.items():
         values = match[element_columns].iloc[0].tolist()
         qaqc_data.append(values)
     else:
-        # If the sample isn't found, fill with blank values
         print(f"Warning: '{raw_sample_name}' not found in Concentrations")
         qaqc_data.append([None] * len(element_columns))
 
-# Find index of "QCB" in the sample order
+# Insert BLK after QCB
 qcb_index = sample_names.index("QCB")
-
-# Insert BLK values right after that
+sample_names.insert(qcb_index + 1, "Blk")
 qaqc_data.insert(qcb_index + 1, blk_values)
 
-# Also insert "Blk" into the sample_names list so it aligns with qaqc_data
-sample_names.insert(qcb_index + 1, "Blk")
 
-
-
+# -----------------------------
+# WRITE TO EXCEL
+# -----------------------------
+wb = load_workbook(template_path)
+ws1 = wb["Calibration"]
 ws2 = wb["QAQC"]
 
-# Build a map of Sample Id → Row Number in the QAQC template
-sample_row_map = {}
-for row in ws2.iter_rows(min_row=3, max_col=1):
-    sample_id = row[0].value
-    if sample_id:
-        sample_row_map[sample_id.strip()] = row[0].row
+# Write Calibration and QAQC using shared logic
+write_sample_data_by_id(ws1, std_names, element_data, element_columns)
+write_sample_data_by_id(ws2, sample_names, qaqc_data, element_columns)
 
-# Write values based on sample name match (not fixed row order)
-start_col = 2  # Column B
-for sample_name, values in zip(sample_names, qaqc_data):
-    target_row = sample_row_map.get(sample_name)
-    if target_row:
-        for j, val in enumerate(values):
-            ws2.cell(row=target_row, column=start_col + j, value=val)
-    else:
-        print(f"Sample '{sample_name}' not found in QAQC sheet — skipping.")
-
-
-# Save the updated workbook
+# Save output
 wb.save(output_path)
 print(f"Data written to {output_path}")
