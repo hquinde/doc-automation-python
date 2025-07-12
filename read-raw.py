@@ -25,7 +25,7 @@ def write_sample_data_by_id(ws, sample_names, data_rows, element_columns, header
             for j, val in enumerate(values):
                 ws.cell(row=target_row, column=data_start_col + j, value=val)
         else:
-            print(f"⚠️ Sample '{sample_name}' not found in sheet — skipping.")
+            print(f"Sample '{sample_name}' not found in sheet — skipping.")
 
 
 # -----------------------------
