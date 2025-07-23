@@ -1,23 +1,15 @@
 import pandas as pd
 from openpyxl import load_workbook
-from datetime import datetime
-
-# activate virtual environment: .\venv\Scripts\Activate.ps1
-# Phase1, hardcode automation, then for phase2 we automate the templates as well and figure out the equaton...
-# get updates to current device: git pull origin main
 
 # -----------------------------
 # Reusable Writing Function
 # -----------------------------
 def write_sample_data_by_id(ws, sample_names, data_rows, element_columns, header_row=1, data_start_col=2):
-    """
-    Writes data to a worksheet by matching sample names in column A.
-    """
     sample_row_map = {}
     for row in ws.iter_rows(min_row=header_row + 1, max_col=1):
         sample_id = row[0].value
         if sample_id:
-            sample_row_map[sample_id.strip()] = row[0].row
+            sample_row_map[str(sample_id).strip()] = row[0].row
 
     for sample_name, values in zip(sample_names, data_rows):
         target_row = sample_row_map.get(sample_name)
@@ -27,14 +19,13 @@ def write_sample_data_by_id(ws, sample_names, data_rows, element_columns, header
         else:
             print(f"Sample '{sample_name}' not found in sheet — skipping.")
 
-
 # -----------------------------
-# Input Setup
+# Setup
 # -----------------------------
-file_path = 'Raw Data.xlsx'
-sheet_name = 'Concentrations'
-template_path = 'Template Report.xlsx'
-output_path = 'Report_Output.xlsx'
+file_path = "Raw Data.xlsx"
+sheet_name = "Concentrations"
+template_path = "Template Report.xlsx"
+output_path = "Report_Output.xlsx"
 
 std_names = [
     'Std1-5ppb', 'Std2-20ppb', 'Std3-50ppb',
@@ -65,26 +56,36 @@ sample_map = {
     "LCB1": "LCB1", "LCB2": "LCB2", "LCB3": "LCB3", "LCB4": "LCB4", "LCB5": "LCB5"
 }
 
+Raw_results_map = {
+    "CCASE 1 (1.58, 8.22)": None,  # to be filled dynamically
+    **{str(i): i for i in range(2, 50)}, 
+    "50-1" : "50-1", 
+    "50-2": "50-2",
+    **{str(i): i for i in range(51, 104)}
+}
 
 # -----------------------------
 # Read Data
 # -----------------------------
 df = pd.read_excel(file_path, sheet_name=sheet_name)
 
-# -----------------------------
-# CALIBRATION DATA
-# -----------------------------
-filtered_df = df[df["Sample Id"].isin(std_names)]
-calibration_df = filtered_df.drop_duplicates(subset="Sample Id", keep="first")
-element_data = calibration_df[element_columns].values.tolist()
+# Dynamically fill CCASE 1 from Concentrations sheet
+sample_ids = df["Sample Id"].dropna().astype(str).tolist()
+for i, sid in enumerate(sample_ids):
+    if sid.strip() == "2" and i > 0:
+        Raw_results_map["CCASE 1 (1.58, 8.22)"] = sample_ids[i - 1].strip()
+        break
 
+# -----------------------------
+# Calibration
+# -----------------------------
+calibration_df = df[df["Sample Id"].isin(std_names)].drop_duplicates("Sample Id")
+calibration_data = calibration_df[element_columns].values.tolist()
 
 # -----------------------------
-# QAQC: Find BLK (Rinse after QCB)
+# QAQC: BLK (Rinse after QCB)
 # -----------------------------
-sample_ids = df["Sample Id"].tolist()
 blk_row = None
-
 for i, sid in enumerate(sample_ids):
     if sid == "QCB":
         for j in range(i + 1, len(sample_ids)):
@@ -92,41 +93,31 @@ for i, sid in enumerate(sample_ids):
                 blk_row = df.iloc[j]
                 break
         break
-
 blk_values = blk_row[element_columns].tolist() if blk_row is not None else [None] * len(element_columns)
 
-# -----------------------------
-# QAQC: Extract Values
-# -----------------------------
-qaqc_data = []
-sample_names = list(sample_map.keys())
-
-for template_name, raw_sample_name in sample_map.items():
-    match = df[df["Sample Id"] == raw_sample_name]
-    if not match.empty:
-        values = match[element_columns].iloc[0].tolist()
-        qaqc_data.append(values)
-    else:
-        print(f"Warning: '{raw_sample_name}' not found in Concentrations")
-        qaqc_data.append([None] * len(element_columns))
-
-# Insert BLK after QCB
-qcb_index = sample_names.index("QCB")
-sample_names.insert(qcb_index + 1, "Blk")
-qaqc_data.insert(qcb_index + 1, blk_values)
-
+# QAQC sample data
+qaqc_data, sample_names = [], list(sample_map.keys())
+for name in sample_names:
+    match = df[df["Sample Id"] == sample_map[name]]
+    qaqc_data.append(match[element_columns].iloc[0].tolist() if not match.empty else [None] * len(element_columns))
+qaqc_data.insert(sample_names.index("QCB") + 1, blk_values)
+sample_names.insert(sample_names.index("QCB") + 1, "Blk")
 
 # -----------------------------
-# WRITE TO EXCEL
+# Raw Results data
+# -----------------------------
+raw_sample_names = list(Raw_results_map.keys())
+raw_data = []
+for name in raw_sample_names:
+    match = df[df["Sample Id"] == Raw_results_map[name]]
+    raw_data.append(match[element_columns].iloc[0].tolist() if not match.empty else [None] * len(element_columns))
+
+# -----------------------------
+# Write to Excel
 # -----------------------------
 wb = load_workbook(template_path)
-ws1 = wb["Calibration"]
-ws2 = wb["QAQC"]
-
-# Write Calibration and QAQC using shared logic
-write_sample_data_by_id(ws1, std_names, element_data, element_columns)
-write_sample_data_by_id(ws2, sample_names, qaqc_data, element_columns)
-
-# Save output
+write_sample_data_by_id(wb["Calibration"], std_names, calibration_data, element_columns)
+write_sample_data_by_id(wb["QAQC"], sample_names, qaqc_data, element_columns)
+write_sample_data_by_id(wb["Raw Results"], raw_sample_names, raw_data, element_columns)
 wb.save(output_path)
 print(f"Data written to {output_path}")
